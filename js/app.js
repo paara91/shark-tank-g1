@@ -156,7 +156,7 @@ async function runRolePicker(){
         </div>
       </div>
       <div class="opt otheropt" style="border-color:var(--cyan);margin-top:9px;">
-        <span class="lbl">Soy el facilitador (pantalla del Comité)</span>
+        <span class="lbl">Facilitador</span>
         <input type="password" id="facpin" class="textinput" placeholder="Clave del facilitador" style="height:36px;">
         <button class="btn" id="facpinbtn" style="width:100%;">Entrar</button>
         <span id="facpinerror" style="display:none;" class="err">Clave incorrecta, intenta de nuevo.</span>
