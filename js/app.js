@@ -150,7 +150,7 @@ async function runRolePicker(){
       <div class="optlist" style="gap:9px;">
         ${vpItems}
         <div class="opt otheropt">
-          <span class="lbl">Invitado (no soy VP fijo)</span>
+          <span class="lbl">Invitado</span>
           <input type="text" id="invitadonombre" class="textinput" placeholder="Tu nombre" style="height:36px;">
           <button class="btn" id="invitadobtn" style="width:100%;">Entrar</button>
         </div>
