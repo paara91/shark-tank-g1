@@ -25,7 +25,7 @@ const QUAD_META = {
   banco:{label:'Banco de iniciativas', bg:'#CADFF4', text:'#3182D3'},
   no_prioriza:{label:'No priorizar', bg:'#FFD1E0', text:'#FF4382'}
 };
-const HORIZON_TARGET = {incremental:50, adyacente:30, disruptivo:20};
+const HORIZON_TARGET = {incremental:70, adyacente:20, disruptivo:10};
 
 // Freno contra clics accidentales en la pantalla del facilitador — NO es
 // seguridad real: este archivo es público y cualquiera puede leer esta clave
@@ -485,7 +485,7 @@ function runFacilitadorView(ident){
         ${svg}
         <p class="smallhead" style="max-width:620px;margin:0 auto 14px;">Puntuación de las iniciativas</p>
         <div class="scorelist">${scoreRows}</div>
-        <p class="smallhead" style="max-width:620px;margin:0 auto 14px;">Mix de horizonte vs. meta 50/30/20</p>
+        <p class="smallhead" style="max-width:620px;margin:0 auto 14px;">Mix de horizonte vs. meta 70/20/10</p>
         <div class="hmix">${hmixRows}</div>
         <div style="max-width:620px;margin:0 auto;">
           <p class="note">Línea amarilla = meta corporativa</p>
