@@ -147,8 +147,8 @@ body.modo-proyeccion .qrbox img,body.modo-proyeccion .qrbox svg{width:380px;heig
 body.modo-proyeccion .qrcard h2{font-size:3rem;margin:0;}
 body.modo-proyeccion .qrcard p{font-size:1.4rem;}
 body.modo-proyeccion .connectedbadge{font-size:1.3rem;padding:12px 26px;}
-body.modo-proyeccion .rolechips{gap:12px;max-width:900px;}
-body.modo-proyeccion .rolechip{font-size:1.15rem;padding:10px 20px;}
+body.modo-proyeccion .rolechips{gap:8px;max-width:900px;}
+body.modo-proyeccion .rolechip{font-size:0.85rem;padding:6px 14px;}
 body.modo-proyeccion .controlcard h2{font-size:3.2rem;}
 body.modo-proyeccion .controlcard p{font-size:1.5rem;}
 body.modo-proyeccion .countbadge{font-size:1.3rem;padding:10px 24px;}
