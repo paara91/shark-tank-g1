@@ -566,13 +566,18 @@ function runFacilitadorView(ident){
 function runProyeccion(){
   changeRoleBtn.style.display = 'none';
   bodyEl.innerHTML = '<div class="dash centercard"><p>Cargando…</p></div>';
-  let estado = null, iniciativas = [], votosPorIni = {}, decisionesPorIni = {}, salaCount = 0;
+  let estado = null, iniciativas = [], votosPorIni = {}, decisionesPorIni = {}, salaRows = [], salaCount = 0;
+
+  function etiquetaParticipante(row){
+    return row.rol === 'invitado' ? `Invitado · ${row.nombre_mostrado}` : row.nombre_mostrado;
+  }
 
   async function cargar(){
-    const [{data: est}, {data: inis}, {data: decs}] = await Promise.all([
+    const [{data: est}, {data: inis}, {data: decs}, {data: sala}] = await Promise.all([
       sb.from('estado_sesion').select('*').eq('id', 1).single(),
       sb.from('iniciativas').select('*').order('orden', {ascending:true}),
-      sb.from('decisiones').select('*')
+      sb.from('decisiones').select('*'),
+      sb.from('sala').select('*').in('rol', ['vp','invitado'])
     ]);
     estado = est;
     iniciativas = inis || [];
@@ -585,8 +590,8 @@ function runProyeccion(){
     } else {
       votosPorIni = {};
     }
-    const {count} = await sb.from('sala').select('*', {count:'exact', head:true}).in('rol', ['vp','invitado']);
-    salaCount = count || 0;
+    salaRows = sala || [];
+    salaCount = salaRows.length;
     render();
   }
 
@@ -608,12 +613,16 @@ function runProyeccion(){
     } catch(e){
       qrSvg = '<p>No se pudo generar el QR</p>';
     }
+    const conectadosChips = salaRows.length
+      ? `<div class="rolechips">${salaRows.map(r => `<span class="rolechip">${esc(etiquetaParticipante(r))}</span>`).join('')}</div>`
+      : '';
     bodyEl.innerHTML = `
       <div class="dash qrcard" style="max-width:900px;margin:0 auto;">
         <h2>Escanea para unirte</h2>
         <div class="qrbox">${qrSvg}</div>
         <p>${esc(url)}</p>
         <span class="connectedbadge"><span class="dot"></span>${salaCount} conectados</span>
+        ${conectadosChips}
       </div>
     `;
   }
@@ -622,13 +631,18 @@ function runProyeccion(){
     const idx = iniciativas.findIndex(i => i.id === estado.iniciativa_activa_id);
     const ini = iniciativas[idx];
     if (!ini){ bodyEl.innerHTML = '<div class="dash centercard"><p>Preparando…</p></div>'; return; }
-    const count = (votosPorIni[ini.id]||[]).length;
+    const votantes = new Set((votosPorIni[ini.id]||[]).map(v => v.participante_id));
+    const count = votantes.size;
+    const respondieronChips = count
+      ? `<div class="rolechips">${salaRows.filter(r => votantes.has(r.participante_id)).map(r => `<span class="rolechip done">${esc(etiquetaParticipante(r))}</span>`).join('')}</div>`
+      : '';
     bodyEl.innerHTML = `
       <div class="dash controlcard" style="max-width:900px;margin:0 auto;">
         <p class="smallhead" style="text-align:center;">Iniciativa ${idx+1} de ${iniciativas.length}</p>
         <h2>${esc(ini.nombre)}</h2>
         <p>${esc(ini.tipo)}</p>
         <div class="countbadge">${count} de ${salaCount} han respondido</div>
+        ${respondieronChips}
       </div>
     `;
   }
