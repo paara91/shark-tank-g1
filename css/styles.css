@@ -57,6 +57,7 @@ body{margin:0;background:#000D27;color:var(--text-primary);font-family:var(--fon
 .progress i.done{background:var(--accent,var(--cyan));}
 .progress i.active{background:var(--accent,var(--cyan));opacity:0.5;}
 .badge{display:inline-block;font-size:11px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;background:rgba(255,255,255,0.1);color:var(--text-secondary);padding:4px 10px;border-radius:6px;margin-bottom:10px;}
+.ininame{font-size:20px;font-weight:900;color:var(--text-primary);line-height:1.2;margin:0 0 14px;text-wrap:balance;}
 
 .qview{display:none;flex-direction:column;min-height:400px;}
 .qview.active{display:flex;}

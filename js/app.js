@@ -235,6 +235,7 @@ function runVpView(ident){
       return;
     }
     const ini = iniciativaActiva;
+    const roleLabel = ident.rol === 'invitado' ? `Invitado · ${ident.nombre_mostrado}` : ident.nombre_mostrado;
     const progressHtml = CRITERIA.map((c,i) => `<i class="${i<localIdx?'done':(i===localIdx?'active':'')}" style="--accent:${c.accent}"></i>`).join('');
     const c = CRITERIA[localIdx];
     let opts = '';
@@ -250,7 +251,8 @@ function runVpView(ident){
         <button class="backbtn" id="backbtn" ${localIdx===0?'disabled':''}>←</button>
         <div class="progress">${progressHtml}</div>
       </div>
-      <span class="badge">${esc(ini.tipo)} · ${esc(ini.nombre)}</span>
+      <span class="badge">${esc(roleLabel)}</span>
+      <p class="ininame">${esc(ini.nombre)}</p>
       <div class="qview active" style="--accent:${c.accent}">
         <p class="qnum">Pregunta ${localIdx+1} de ${CRITERIA.length}</p>
         <p class="qname">${esc(c.name)}</p>
