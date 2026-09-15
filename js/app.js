@@ -220,7 +220,7 @@ function runVpView(ident){
     const roleLabel = ident.rol === 'invitado' ? `Invitado · ${ident.nombre_mostrado}` : ident.nombre_mostrado;
     const criterios = CRITERIA.map(c => `
       <div class="criteriaitem">
-        <b style="color:${c.accent}">${esc(c.name)}</b>
+        <b>${esc(c.name)}</b>
         <span>${esc(c.q)}</span>
       </div>
     `).join('');
