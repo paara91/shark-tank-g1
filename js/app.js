@@ -191,7 +191,7 @@ function runVpView(ident){
     </div></div>
   `;
   const phoneinner = document.getElementById('phoneinner');
-  let estado = null, iniciativaActiva = null, yaVotado = false, enviando = false, lastIniId = undefined;
+  let estado = null, iniciativaActiva = null, yaVotado = false, enviando = false, seleccionado = null, lastIniId = undefined;
 
   async function cargarEstado(){
     const {data} = await sb.from('estado_sesion').select('*').eq('id', 1).single();
@@ -207,6 +207,7 @@ function runVpView(ident){
       lastIniId = iniId;
       yaVotado = false;
       enviando = false;
+      seleccionado = null;
       if (iniId){
         const {data: voto} = await sb.from('votos').select('iniciativa_id').eq('iniciativa_id', iniId).eq('participante_id', ident.participante_id).maybeSingle();
         yaVotado = !!voto;
@@ -242,18 +243,22 @@ function runVpView(ident){
       <div class="criterialist">${criterios}</div>
       <p class="votehint">Según estos criterios, ¿qué harías con esta iniciativa?</p>
       <div class="voteoptions">
-        ${DECISIONES.map(d => `<button class="votebtn" data-dec="${d.id}" style="--vc:${d.color}">${esc(d.label)}</button>`).join('')}
+        ${DECISIONES.map(d => `<button class="votebtn${seleccionado===d.id?' sel':''}" data-dec="${d.id}" style="--vc:${d.color}">${esc(d.label)}</button>`).join('')}
       </div>
     `;
     phoneinner.querySelectorAll('.votebtn').forEach(btn => {
-      btn.onclick = async () => {
+      btn.onclick = () => {
         if (enviando) return;
         enviando = true;
-        yaVotado = true;
+        seleccionado = btn.dataset.dec;
         render();
-        await sb.from('votos').upsert({
-          iniciativa_id: ini.id, participante_id: ident.participante_id, voto: btn.dataset.dec
-        });
+        setTimeout(async () => {
+          yaVotado = true;
+          render();
+          await sb.from('votos').upsert({
+            iniciativa_id: ini.id, participante_id: ident.participante_id, voto: seleccionado
+          });
+        }, 380);
       };
     });
   }
