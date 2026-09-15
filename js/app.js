@@ -278,7 +278,7 @@ function runVpView(ident){
 /* ---------- Resumen de votos por iniciativa (compartido entre la vista de
    facilitador y el modo proyección, que corren en pestañas/páginas distintas,
    así que esta función vive a nivel superior, no anidada) ---------- */
-function construirResumenVotos(items, decisionesPorIni, conBotonesDecision){
+function construirResumenVotos(items, decisionesPorIni, conBotonesDecision, notasPorIni){
   return items.map((it,i) => {
     const dec = decisionesPorIni[it.ini.id];
     const total = it.n || 0;
@@ -294,7 +294,8 @@ function construirResumenVotos(items, decisionesPorIni, conBotonesDecision){
     const decisionrow = conBotonesDecision ? `
         <div class="decisionrow">
           ${DECISIONES.map(d => `<button class="decisionbtn" data-ini="${it.ini.id}" data-dec="${d.id}" style="color:${d.color};${dec===d.id?'border-color:'+d.color+';background:'+d.color+'22;':''}">${esc(d.label)}</button>`).join('')}
-        </div>` : '';
+        </div>
+        <textarea class="notainput" data-ini="${it.ini.id}" placeholder="Notas y comentarios de la discusión...">${esc((notasPorIni && notasPorIni[it.ini.id]) || '')}</textarea>` : '';
     return `
       <div class="scorerow">
         <div class="vt-toprow">
@@ -313,7 +314,7 @@ function construirResumenVotos(items, decisionesPorIni, conBotonesDecision){
 
 /* ============ VISTA FACILITADOR ============ */
 function runFacilitadorView(ident){
-  let estado = null, iniciativas = [], votosPorIni = {}, decisionesPorIni = {}, participanteNombreMap = {}, salaCount = 0;
+  let estado = null, iniciativas = [], votosPorIni = {}, decisionesPorIni = {}, notasPorIni = {}, participanteNombreMap = {}, salaCount = 0;
 
   async function cargarTodo(){
     const [{data: est}, {data: inis}, {data: decs}, {data: salaRows}] = await Promise.all([
@@ -325,7 +326,8 @@ function runFacilitadorView(ident){
     estado = est;
     iniciativas = inis || [];
     decisionesPorIni = {};
-    (decs||[]).forEach(d => { decisionesPorIni[d.iniciativa_id] = d.decision_id; });
+    notasPorIni = {};
+    (decs||[]).forEach(d => { decisionesPorIni[d.iniciativa_id] = d.decision_id; notasPorIni[d.iniciativa_id] = d.nota || ''; });
     participanteNombreMap = {};
     (salaRows||[]).forEach(r => { participanteNombreMap[r.participante_id] = r.nombre_mostrado; });
     salaCount = (salaRows||[]).filter(r => r.rol !== 'facilitador').length;
@@ -431,7 +433,7 @@ function runFacilitadorView(ident){
 
   function renderReveal(){
     const items = iniciativas.map(ini => Object.assign({ini}, tallyVotes(votosPorIni[ini.id]||[])));
-    const scoreRows = construirResumenVotos(items, decisionesPorIni, true);
+    const scoreRows = construirResumenVotos(items, decisionesPorIni, true, notasPorIni);
     const matrizHtml = iniciativas.map(ini => {
       const votos = votosPorIni[ini.id] || [];
       const filas = votos.length ? votos.map(v => {
@@ -458,6 +460,11 @@ function runFacilitadorView(ident){
     bodyEl.querySelectorAll('.decisionbtn').forEach(b => {
       b.onclick = async () => { await sb.from('decisiones').upsert({iniciativa_id: b.dataset.ini, decision_id: b.dataset.dec}); };
     });
+    bodyEl.querySelectorAll('.notainput').forEach(ta => {
+      ta.addEventListener('blur', async () => {
+        await sb.from('decisiones').upsert({iniciativa_id: ta.dataset.ini, nota: ta.value});
+      });
+    });
     document.getElementById('proyeccionbtn').onclick = abrirProyeccion;
     document.getElementById('downloadxlsxbtn').onclick = () => descargarExcel(items);
     document.getElementById('nuevarondabtn').onclick = async () => {
@@ -474,7 +481,7 @@ function runFacilitadorView(ident){
     const sessionId = estado.ronda_id || dateStr;
 
     const resumenRows = [
-      ['Fecha','Sesión','#','Iniciativa','Tipo','Votantes','Votos Priorizar','Votos Resolver barreras','Votos Descartar','Decisión final']
+      ['Fecha','Sesión','#','Iniciativa','Tipo','Votantes','Votos Priorizar','Votos Resolver barreras','Votos Descartar','Decisión final','Notas de la discusión']
     ];
     items.forEach((it, i) => {
       const decId = decisionesPorIni[it.ini.id];
@@ -482,11 +489,12 @@ function runFacilitadorView(ident){
       resumenRows.push([
         dateStr, sessionId, i+1, it.ini.nombre, it.ini.tipo, it.n,
         it.counts.priorizar, it.counts.resolver, it.counts.descartar,
-        decLabel || 'Sin decisión registrada'
+        decLabel || 'Sin decisión registrada',
+        (notasPorIni && notasPorIni[it.ini.id]) || ''
       ]);
     });
     const wsResumen = XLSX.utils.aoa_to_sheet(resumenRows);
-    wsResumen['!cols'] = [{wch:12},{wch:16},{wch:4},{wch:26},{wch:14},{wch:9},{wch:14},{wch:20},{wch:14},{wch:20}];
+    wsResumen['!cols'] = [{wch:12},{wch:16},{wch:4},{wch:26},{wch:14},{wch:9},{wch:14},{wch:20},{wch:14},{wch:20},{wch:40}];
 
     const detalleRows = [
       ['Fecha','Sesión','#','Iniciativa','Tipo','Participante','Voto']
