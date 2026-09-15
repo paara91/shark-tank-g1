@@ -285,6 +285,11 @@ function construirResumenVotos(items, decisionesPorIni, conBotonesDecision){
     const barHtml = total
       ? DECISIONES.map(d => `<div class="voteseg" style="flex:${it.counts[d.id]};background:${d.color};"></div>`).join('')
       : '<div class="voteseg empty"></div>';
+    const pctHtml = DECISIONES.map(d => {
+      const c = it.counts[d.id]||0;
+      const pct = total ? Math.round((c/total)*100) : 0;
+      return `<div class="votepct" style="flex:${total ? (c||0.0001) : 1};color:${d.color}">${pct}%</div>`;
+    }).join('');
     const countsHtml = DECISIONES.map(d => `<span style="color:${d.color}">${it.counts[d.id]||0} · ${esc(d.label)}</span>`).join('');
     const decisionrow = conBotonesDecision ? `
         <div class="decisionrow">
@@ -297,6 +302,7 @@ function construirResumenVotos(items, decisionesPorIni, conBotonesDecision){
           <div class="name"><b>${esc(it.ini.nombre)}</b><span>${esc(it.ini.tipo)}</span></div>
           <span class="votetotal">${total} ${total===1?'voto':'votos'}</span>
         </div>
+        <div class="votepercents">${pctHtml}</div>
         <div class="votebar">${barHtml}</div>
         <div class="votecounts">${countsHtml}</div>
         ${decisionrow}

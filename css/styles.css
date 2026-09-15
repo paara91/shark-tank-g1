@@ -130,7 +130,9 @@ body{margin:0;background:#000D27;color:var(--text-primary);font-family:var(--fon
 .vt-toprow{display:flex;align-items:center;gap:12px;}
 .vt-toprow .name{flex:1;min-width:0;}
 .votetotal{font-size:11px;color:var(--text-secondary);font-weight:700;white-space:nowrap;}
-.votebar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:rgba(255,255,255,0.08);margin:10px 0 8px;}
+.votepercents{display:flex;margin-top:10px;}
+.votepct{text-align:center;font-size:11px;font-weight:800;white-space:nowrap;}
+.votebar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:rgba(255,255,255,0.08);margin:4px 0 8px;}
 .voteseg{height:100%;}
 .voteseg.empty{flex:1;background:rgba(255,255,255,0.08);}
 .votecounts{font-size:11.5px;font-weight:700;display:flex;gap:12px;flex-wrap:wrap;padding-left:38px;}
@@ -183,6 +185,7 @@ body.modo-proyeccion .scorerow .name b{font-size:1.1rem;}
 body.modo-proyeccion .scorerow .score{font-size:1.4rem;}
 body.modo-proyeccion .scorerow .quad{font-size:0.85rem;}
 body.modo-proyeccion .votetotal{font-size:0.95rem;}
+body.modo-proyeccion .votepct{font-size:0.95rem;}
 body.modo-proyeccion .votebar{height:20px;}
 body.modo-proyeccion .votecounts{font-size:0.95rem;gap:16px;}
 
