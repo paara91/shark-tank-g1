@@ -241,7 +241,7 @@ function runVpView(ident){
       <span class="badge">${esc(roleLabel)}</span>
       <p class="ininame">${esc(ini.nombre)}</p>
       <div class="criterialist">${criterios}</div>
-      <p class="votehint">Según estos criterios, ¿qué harías con esta iniciativa?</p>
+      <p class="votehint">Considerando estos cuatro criterios, ¿qué decisión recomiendas para esta iniciativa?</p>
       <div class="voteoptions">
         ${DECISIONES.map(d => `<button class="votebtn${seleccionado===d.id?' sel':''}" data-dec="${d.id}" style="--vc:${d.color}">${esc(d.label)}</button>`).join('')}
       </div>
