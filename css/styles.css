@@ -59,6 +59,17 @@ body{margin:0;background:#000D27;color:var(--text-primary);font-family:var(--fon
 .badge{display:inline-block;font-size:11px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;background:rgba(255,255,255,0.1);color:var(--text-secondary);padding:4px 10px;border-radius:6px;margin-bottom:10px;}
 .ininame{font-size:20px;font-weight:900;color:var(--text-primary);line-height:1.2;margin:0 0 14px;text-wrap:balance;}
 
+/* criterios de referencia + voto de 3 opciones (vista VP) */
+.criterialist{display:flex;flex-direction:column;gap:10px;margin:0 0 16px;}
+.criteriaitem{display:flex;flex-direction:column;gap:2px;}
+.criteriaitem b{font-size:12.5px;font-weight:800;letter-spacing:0.02em;}
+.criteriaitem span{font-size:12px;color:var(--text-secondary);line-height:1.4;}
+.votehint{font-size:12.5px;color:var(--text-secondary);margin:0 0 12px;text-align:center;}
+.voteoptions{display:flex;flex-direction:column;gap:10px;margin-top:auto;}
+.votebtn{--vc:var(--cyan);padding:15px 16px;border-radius:14px;border:1.5px solid var(--vc);background:rgba(4,32,46,0.28);color:var(--vc);font-family:var(--font);font-weight:800;font-size:14px;cursor:pointer;text-align:center;transition:transform .15s, background .15s;}
+.votebtn:hover{background:rgba(255,255,255,0.08);}
+.votebtn:active{transform:scale(0.98);}
+
 .qview{display:none;flex-direction:column;min-height:400px;}
 .qview.active{display:flex;}
 .qnum{font-size:13px;font-weight:800;color:var(--accent);letter-spacing:0.06em;margin:0 0 6px;}
@@ -115,7 +126,14 @@ body{margin:0;background:#000D27;color:var(--text-primary);font-family:var(--fon
 .scorerow .name span{font-size:11px;color:var(--text-secondary);}
 .scorerow .score{font-size:17px;font-weight:800;text-align:right;}
 .scorerow .quad{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:4px 9px;border-radius:100px;white-space:nowrap;justify-self:start;}
-.decisionrow{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-left:38px;}
+.vt-toprow{display:flex;align-items:center;gap:12px;}
+.vt-toprow .name{flex:1;min-width:0;}
+.votetotal{font-size:11px;color:var(--text-secondary);font-weight:700;white-space:nowrap;}
+.votebar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:rgba(255,255,255,0.08);margin:10px 0 8px;}
+.voteseg{height:100%;}
+.voteseg.empty{flex:1;background:rgba(255,255,255,0.08);}
+.votecounts{font-size:11.5px;font-weight:700;display:flex;gap:12px;flex-wrap:wrap;padding-left:38px;}
+.decisionrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding-left:38px;margin-top:4px;}
 .decisionbtn{font-size:10px;font-weight:700;padding:5px 10px;border-radius:100px;border:1.5px solid var(--border-strong);background:transparent;color:var(--text-secondary);cursor:pointer;text-align:center;}
 .decisionbtn.sel{border-color:currentColor;background:rgba(255,255,255,0.08);}
 .note{font-size:12px;color:var(--text-muted);margin-top:14px;}
@@ -127,6 +145,13 @@ body{margin:0;background:#000D27;color:var(--text-primary);font-family:var(--fon
 .linklike{background:none;border:none;color:var(--cyan);font-size:12px;text-decoration:underline;cursor:pointer;padding:0;font-family:var(--font);}
 .err{color:var(--red);font-size:11.5px;font-weight:700;}
 .small-note{font-size:11px;color:var(--text-muted);}
+
+/* detalle de votos, solo facilitador */
+.matrizlist{display:flex;flex-direction:column;gap:14px;max-width:620px;margin:0 auto 1.5rem;}
+.matrizini{background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 14px;}
+.matrizininame{font-size:13px;font-weight:800;margin:0 0 8px;}
+.matrizfila{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:4px 0;border-top:1px solid rgba(255,255,255,0.06);}
+.matrizfila:first-of-type{border-top:none;}
 
 /* pantalla de espera con QR */
 .qrcard{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:18px;padding:2.5rem 1rem;}
@@ -156,6 +181,9 @@ body.modo-proyeccion .smallhead{font-size:1.1rem;}
 body.modo-proyeccion .scorerow .name b{font-size:1.1rem;}
 body.modo-proyeccion .scorerow .score{font-size:1.4rem;}
 body.modo-proyeccion .scorerow .quad{font-size:0.85rem;}
+body.modo-proyeccion .votetotal{font-size:0.95rem;}
+body.modo-proyeccion .votebar{height:20px;}
+body.modo-proyeccion .votecounts{font-size:0.95rem;gap:16px;}
 
 /* selector de rol / invitado */
 .opt.otheropt{flex-direction:column;align-items:stretch;gap:8px;}

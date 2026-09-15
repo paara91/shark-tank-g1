@@ -7,47 +7,29 @@
 
 /* ---------- Modelo de calificación (NO TOCAR sin acuerdo del área) ---------- */
 const TIPOS = ['Producto','Proceso','Canales','Modelo de negocio','Experiencia de usuario'];
+// Los 4 criterios se muestran como referencia al VP antes de votar (ya no se
+// califican uno por uno de 1 a 5 — el VP vota directo una de las 3 opciones).
 const CRITERIA = [
-  {name:"Impacto potencial", q:"¿Cuál es la magnitud del impacto esperado para Postobón?", accent:"var(--cyan)", opts:["Limitado","","Relevante","","Altamente significativo"]},
-  {name:"Relación beneficio–recursos", q:"¿En qué medida los beneficios esperados justifican la inversión, el tiempo y los demás recursos requeridos?", accent:"var(--purple)", opts:["No justifican","","Razonablemente","","Ampliamente"]},
-  {name:"Contribución estratégica", q:"¿En qué medida la iniciativa contribuye a las prioridades estratégicas de Postobón?", accent:"var(--pink)", opts:["Limitada","","Parcial","","Directa y significativa"]},
-  {name:"Viabilidad", q:"¿Qué tan factible es implementar la iniciativa, considerando su complejidad y el acceso a las capacidades requeridas?", accent:"var(--gold)", opts:["Barreras importantes","","Viable con ajustes","","Ruta clara y viable"]}
+  {name:"Impacto potencial", q:"¿Cuál es la magnitud del impacto esperado para Postobón?", accent:"var(--cyan)"},
+  {name:"Relación beneficio–recursos", q:"¿En qué medida los beneficios esperados justifican la inversión, el tiempo y los demás recursos requeridos?", accent:"var(--purple)"},
+  {name:"Contribución estratégica", q:"¿En qué medida la iniciativa contribuye a las prioridades estratégicas de Postobón?", accent:"var(--pink)"},
+  {name:"Viabilidad", q:"¿Qué tan factible es implementar la iniciativa, considerando su complejidad y el acceso a las capacidades requeridas?", accent:"var(--gold)"}
 ];
 const DECISIONES = [
-  {id:'avanza', label:'Priorizar', color:'#2CB1AE'},
+  {id:'priorizar', label:'Priorizar', color:'#2CB1AE'},
   {id:'resolver', label:'Resolver barreras', color:'#FFD347'},
-  {id:'banco', label:'Banco de iniciativas', color:'#3182D3'},
-  {id:'no_prioriza', label:'No priorizar', color:'#FF4382'}
+  {id:'descartar', label:'Descartar', color:'#FF4382'}
 ];
-const QUAD_META = {
-  avanza:{label:'Priorizar', bg:'#C1F0F0', text:'#2CB1AE'},
-  resolver:{label:'Resolver barreras', bg:'#FFF9E6', text:'#FFD347'},
-  banco:{label:'Banco de iniciativas', bg:'#CADFF4', text:'#3182D3'},
-  no_prioriza:{label:'No priorizar', bg:'#FFD1E0', text:'#FF4382'}
-};
-const HORIZON_TARGET = {incremental:70, adyacente:20, disruptivo:10};
 
 // Freno contra clics accidentales en la pantalla del facilitador — NO es
 // seguridad real: este archivo es público y cualquiera puede leer esta clave
 // en el código fuente. Ver README.md, sección "Pendientes de seguridad".
 const FACILITADOR_PIN = 'IDEAR';
 
-function avg(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
-function computeAgg(votes){
-  const I = avg(votes.map(v=>v.i1)), B = avg(votes.map(v=>v.i2)), C = avg(votes.map(v=>v.i3)), V = avg(votes.map(v=>v.i4));
-  const puntaje1_5 = 0.30*I + 0.20*B + 0.30*C + 0.20*V;
-  const puntaje = votes.length ? Math.round(25*(puntaje1_5-1)) : null;
-  const x1_5 = (30*I + 20*B + 30*C)/80;
-  const x = votes.length ? Math.round(25*(x1_5-1)) : null;
-  const y = votes.length ? Math.round(25*(V-1)) : null;
-  let cuadrante = null;
-  if (votes.length){
-    if (x>=50 && y>=50) cuadrante='avanza';
-    else if (x<50 && y>=50) cuadrante='banco';
-    else if (x>=50 && y<50) cuadrante='resolver';
-    else cuadrante='no_prioriza';
-  }
-  return {I,B,C,V,puntaje,x,y,cuadrante,n:votes.length};
+function tallyVotes(votos){
+  const counts = {priorizar:0, resolver:0, descartar:0};
+  votos.forEach(v => { if (v.voto && counts.hasOwnProperty(v.voto)) counts[v.voto]++; });
+  return {counts, n: votos.length};
 }
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function uuid(){
@@ -195,10 +177,9 @@ function runVpView(ident){
       <div class="phone-notch"></div>
       <div id="phoneinner"><div class="centercard"><p>Cargando…</p></div></div>
     </div></div>
-    <p class="hint">Selecciona una respuesta para avanzar automáticamente</p>
   `;
   const phoneinner = document.getElementById('phoneinner');
-  let estado = null, iniciativaActiva = null, localIdx = 0, sel = {}, yaVotado = false, lastIniId = undefined;
+  let estado = null, iniciativaActiva = null, yaVotado = false, enviando = false, lastIniId = undefined;
 
   async function cargarEstado(){
     const {data} = await sb.from('estado_sesion').select('*').eq('id', 1).single();
@@ -212,7 +193,8 @@ function runVpView(ident){
     const iniId = iniciativaActiva ? iniciativaActiva.id : null;
     if (iniId !== lastIniId){
       lastIniId = iniId;
-      localIdx = 0; sel = {}; yaVotado = false;
+      yaVotado = false;
+      enviando = false;
       if (iniId){
         const {data: voto} = await sb.from('votos').select('iniciativa_id').eq('iniciativa_id', iniId).eq('participante_id', ident.participante_id).maybeSingle();
         yaVotado = !!voto;
@@ -231,53 +213,35 @@ function runVpView(ident){
       return;
     }
     if (yaVotado){
-      phoneinner.innerHTML = '<div class="centercard"><div class="checkring">✓</div><h3>Calificación registrada</h3><p>Los resultados quedan ocultos hasta que termine el último pitch de la sesión.</p></div>';
+      phoneinner.innerHTML = '<div class="centercard"><div class="checkring">✓</div><h3>Voto registrado</h3><p>Los resultados quedan ocultos hasta que termine el último pitch de la sesión.</p></div>';
       return;
     }
     const ini = iniciativaActiva;
     const roleLabel = ident.rol === 'invitado' ? `Invitado · ${ident.nombre_mostrado}` : ident.nombre_mostrado;
-    const progressHtml = CRITERIA.map((c,i) => `<i class="${i<localIdx?'done':(i===localIdx?'active':'')}" style="--accent:${c.accent}"></i>`).join('');
-    const c = CRITERIA[localIdx];
-    let opts = '';
-    for (let n=1;n<=5;n++){
-      const raw = c.opts[n-1];
-      const isMid = raw === '';
-      const label = isMid ? 'Posición intermedia' : raw;
-      const isSel = sel[localIdx] === n;
-      opts += `<button class="opt${isSel?' sel':''}" data-v="${n}"><span class="num">${n}</span><span class="lbl${isMid?' mid':''}">${label}</span></button>`;
-    }
-    phoneinner.innerHTML = `
-      <div class="qheader">
-        <button class="backbtn" id="backbtn" ${localIdx===0?'disabled':''}>←</button>
-        <div class="progress">${progressHtml}</div>
+    const criterios = CRITERIA.map(c => `
+      <div class="criteriaitem">
+        <b style="color:${c.accent}">${esc(c.name)}</b>
+        <span>${esc(c.q)}</span>
       </div>
+    `).join('');
+    phoneinner.innerHTML = `
       <span class="badge">${esc(roleLabel)}</span>
       <p class="ininame">${esc(ini.nombre)}</p>
-      <div class="qview active" style="--accent:${c.accent}">
-        <p class="qnum">Pregunta ${localIdx+1} de ${CRITERIA.length}</p>
-        <p class="qname">${esc(c.name)}</p>
-        <p class="qtext">${esc(c.q)}</p>
-        <div class="optlist">${opts}</div>
+      <div class="criterialist">${criterios}</div>
+      <p class="votehint">Según estos criterios, ¿qué harías con esta iniciativa?</p>
+      <div class="voteoptions">
+        ${DECISIONES.map(d => `<button class="votebtn" data-dec="${d.id}" style="--vc:${d.color}">${esc(d.label)}</button>`).join('')}
       </div>
     `;
-    document.getElementById('backbtn').onclick = () => { if (localIdx>0){ localIdx--; render(); } };
-    phoneinner.querySelectorAll('.opt').forEach(btn => {
-      btn.onclick = () => {
-        sel[localIdx] = Number(btn.dataset.v);
-        if (localIdx < CRITERIA.length-1){
-          setTimeout(() => { localIdx++; render(); }, 380);
-          render();
-        } else {
-          setTimeout(async () => {
-            yaVotado = true;
-            render();
-            await sb.from('votos').upsert({
-              iniciativa_id: ini.id, participante_id: ident.participante_id,
-              i1: sel[0], i2: sel[1], i3: sel[2], i4: sel[3]
-            });
-          }, 380);
-          render();
-        }
+    phoneinner.querySelectorAll('.votebtn').forEach(btn => {
+      btn.onclick = async () => {
+        if (enviando) return;
+        enviando = true;
+        yaVotado = true;
+        render();
+        await sb.from('votos').upsert({
+          iniciativa_id: ini.id, participante_id: ident.participante_id, voto: btn.dataset.dec
+        });
       };
     });
   }
@@ -288,57 +252,34 @@ function runVpView(ident){
     .subscribe();
 }
 
-/* ---------- Dibujo del plano de decisión + lista de puntajes (compartido entre
-   la vista de facilitador y el modo proyección, que corren en pestañas/páginas
-   distintas, así que esta función vive a nivel superior, no anidada) ---------- */
-function construirPlanoYScoreRows(aggs, decisionesPorIni, conBotonesDecision){
-  const svgPoints = aggs.map((a,i) => {
-    if (a.x===null) return '';
-    const PAD = 16;
-    const px = 60 + PAD + (a.x/100)*(560-2*PAD);
-    const py = 20 + PAD + (1-a.y/100)*(360-2*PAD);
-    const meta = QUAD_META[a.cuadrante];
-    return `<circle cx="${px}" cy="${py}" r="11" fill="${meta.text}" filter="url(#dotshadow)"/><text x="${px}" y="${py+4}" text-anchor="middle" font-size="13" font-weight="800" fill="#ffffff">${i+1}</text>`;
-  }).join('');
-  const svg = `
-    <svg viewBox="-10 -22 700 446" style="width:100%;max-width:620px;display:block;margin:0 auto 1.8rem;">
-      <defs><filter id="dotshadow" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="2" stdDeviation="2.2" flood-color="#04202e" flood-opacity="0.4"/></filter></defs>
-      <text x="509" y="7" text-anchor="end" font-size="38" font-weight="500" fill="#86959E">${aggs.length}</text>
-      <text x="527" y="-10" text-anchor="start" font-size="14" font-weight="600" fill="#9fc3d6">Iniciativas</text>
-      <text x="527" y="7" text-anchor="start" font-size="14" font-weight="600" fill="#9fc3d6">evaluadas</text>
-      <rect x="60" y="20" width="560" height="360" fill="#ffffff"/>
-      <line x1="340" y1="20" x2="340" y2="380" stroke="#d9dee2" stroke-width="2"/>
-      <line x1="60" y1="200" x2="620" y2="200" stroke="#d9dee2" stroke-width="2"/>
-      <rect x="60" y="20" width="560" height="360" fill="none" stroke="#b3bec5"/>
-      <text x="480" y="45" text-anchor="middle" font-size="18" font-weight="800" fill="#2CB1AE">Priorizar</text>
-      <text x="200" y="45" text-anchor="middle" font-size="18" font-weight="800" fill="#3182D3">Banco de iniciativas</text>
-      <text x="480" y="356" text-anchor="middle" font-size="18" font-weight="800" fill="#FFD347">Resolver barreras</text>
-      <text x="200" y="356" text-anchor="middle" font-size="18" font-weight="800" fill="#FF4382">No priorizar</text>
-      <text x="340" y="414" text-anchor="middle" font-size="17" font-weight="600" fill="#86959E">ATRACTIVO</text>
-      <text x="26" y="200" text-anchor="middle" font-size="17" font-weight="600" fill="#86959E" transform="rotate(-90 26 200)">VIABILIDAD</text>
-      ${svgPoints}
-    </svg>
-  `;
-  const scoreRows = aggs.map((a,i) => {
-    const meta = a.cuadrante ? QUAD_META[a.cuadrante] : {label:'Sin votos', text:'#7fa4b8'};
-    const dec = decisionesPorIni[a.ini.id];
+/* ---------- Resumen de votos por iniciativa (compartido entre la vista de
+   facilitador y el modo proyección, que corren en pestañas/páginas distintas,
+   así que esta función vive a nivel superior, no anidada) ---------- */
+function construirResumenVotos(items, decisionesPorIni, conBotonesDecision){
+  return items.map((it,i) => {
+    const dec = decisionesPorIni[it.ini.id];
+    const total = it.n || 0;
+    const barHtml = total
+      ? DECISIONES.map(d => `<div class="voteseg" style="flex:${it.counts[d.id]};background:${d.color};"></div>`).join('')
+      : '<div class="voteseg empty"></div>';
+    const countsHtml = DECISIONES.map(d => `<span style="color:${d.color}">${it.counts[d.id]||0} · ${esc(d.label)}</span>`).join('');
     const decisionrow = conBotonesDecision ? `
         <div class="decisionrow">
-          ${DECISIONES.map(d => `<button class="decisionbtn" data-ini="${a.ini.id}" data-dec="${d.id}" style="color:${d.color};${dec===d.id?'border-color:'+d.color+';background:'+d.color+'22;':''}">${d.label}</button>`).join('')}
+          ${DECISIONES.map(d => `<button class="decisionbtn" data-ini="${it.ini.id}" data-dec="${d.id}" style="color:${d.color};${dec===d.id?'border-color:'+d.color+';background:'+d.color+'22;':''}">${esc(d.label)}</button>`).join('')}
         </div>` : '';
     return `
       <div class="scorerow">
-        <div class="toprow">
-          <span class="num" style="background:${meta.text}">${i+1}</span>
-          <div class="name"><b>${esc(a.ini.nombre)}</b><span>${esc(a.ini.tipo)}</span></div>
-          <span class="score">${a.puntaje===null?'—':a.puntaje}</span>
-          <span class="quad" style="background:${meta.text}22;color:${meta.text}">${meta.label}</span>
+        <div class="vt-toprow">
+          <span class="num" style="background:#7fa4b8">${i+1}</span>
+          <div class="name"><b>${esc(it.ini.nombre)}</b><span>${esc(it.ini.tipo)}</span></div>
+          <span class="votetotal">${total} ${total===1?'voto':'votos'}</span>
         </div>
+        <div class="votebar">${barHtml}</div>
+        <div class="votecounts">${countsHtml}</div>
         ${decisionrow}
       </div>
     `;
   }).join('');
-  return {svg, scoreRows};
 }
 
 /* ============ VISTA FACILITADOR ============ */
@@ -404,12 +345,6 @@ function runFacilitadorView(ident){
             <div class="inirow"><b>${i+1}. ${esc(ini.nombre)}</b><span>${esc(ini.tipo)}</span><button class="rmbtn" data-id="${ini.id}">✕</button></div>
           `).join('') : '<p class="note" style="margin:0;">Aún no hay iniciativas agregadas.</p>'}
         </div>
-        <p class="smallhead">Mix de horizonte actual del portafolio (%)</p>
-        <div class="row2" style="grid-template-columns:1fr 1fr 1fr;">
-          <div class="field" style="margin-bottom:0;"><label>Incremental</label><input type="number" class="textinput" id="hmix-inc" placeholder="% real" value="${estado.horizon_incremental ?? ''}"></div>
-          <div class="field" style="margin-bottom:0;"><label>Adyacente</label><input type="number" class="textinput" id="hmix-ady" placeholder="% real" value="${estado.horizon_adyacente ?? ''}"></div>
-          <div class="field" style="margin-bottom:0;"><label>Disruptivo</label><input type="number" class="textinput" id="hmix-dis" placeholder="% real" value="${estado.horizon_disruptivo ?? ''}"></div>
-        </div>
         <button class="btn" id="startbtn" ${iniciativas.length===0?'disabled':''} style="width:100%;">Iniciar sesión</button>
         <p class="note"><span class="connectedbadge"><span class="dot"></span>${salaCount} conectados</span></p>
         <p class="note">
@@ -430,13 +365,7 @@ function runFacilitadorView(ident){
       b.onclick = async () => { await sb.from('iniciativas').delete().eq('id', b.dataset.id); };
     });
     document.getElementById('startbtn').onclick = async () => {
-      const hinc = Number(document.getElementById('hmix-inc').value)||0;
-      const hady = Number(document.getElementById('hmix-ady').value)||0;
-      const hdis = Number(document.getElementById('hmix-dis').value)||0;
-      await actualizarEstado({
-        horizon_incremental: hinc, horizon_adyacente: hady, horizon_disruptivo: hdis,
-        fase: 'votando', iniciativa_activa_id: iniciativas[0].id
-      });
+      await actualizarEstado({fase:'votando', iniciativa_activa_id: iniciativas[0].id});
     };
     document.getElementById('proyeccionbtn').onclick = abrirProyeccion;
     document.getElementById('vaciarbtn').onclick = async () => {
@@ -472,25 +401,25 @@ function runFacilitadorView(ident){
   }
 
   function renderReveal(){
-    const aggs = iniciativas.map(ini => Object.assign({ini}, computeAgg(votosPorIni[ini.id]||[])));
-    const hm = {incremental: estado.horizon_incremental||0, adyacente: estado.horizon_adyacente||0, disruptivo: estado.horizon_disruptivo||0};
-    const {svg, scoreRows} = construirPlanoYScoreRows(aggs, decisionesPorIni, true);
-    let hmixRows = '';
-    [['Incremental','incremental'],['Adyacente','adyacente'],['Disruptivo','disruptivo']].forEach(([label,key]) => {
-      const target = HORIZON_TARGET[key];
-      const real = Math.min(Math.max(hm[key],0),100);
-      hmixRows += `<div class="hmix-row"><div class="label-row"><span>${label}</span><b>${hm[key]}%</b></div><div class="hmix-track"><div class="hmix-fill" style="width:${real}%;"></div><div class="hmix-target" style="left:${target}%;"></div><span class="hmix-target-label" style="left:${target}%;">${target}%</span></div></div>`;
-    });
+    const items = iniciativas.map(ini => Object.assign({ini}, tallyVotes(votosPorIni[ini.id]||[])));
+    const scoreRows = construirResumenVotos(items, decisionesPorIni, true);
+    const matrizHtml = iniciativas.map(ini => {
+      const votos = votosPorIni[ini.id] || [];
+      const filas = votos.length ? votos.map(v => {
+        const nombre = participanteNombreMap[v.participante_id] || 'Participante';
+        const dec = DECISIONES.find(d => d.id === v.voto);
+        return `<div class="matrizfila"><span>${esc(nombre)}</span><b style="color:${dec?dec.color:'inherit'}">${dec?esc(dec.label):esc(v.voto||'—')}</b></div>`;
+      }).join('') : '<p class="note" style="margin:4px 0;">Sin votos.</p>';
+      return `<div class="matrizini"><p class="matrizininame">${esc(ini.nombre)}</p>${filas}</div>`;
+    }).join('');
     bodyEl.innerHTML = `
       <div class="dash" style="max-width:704px;margin:0 auto;">
         <p class="smallhead" style="font-size:14.5px;color:var(--cyan);max-width:620px;margin:0 auto 14px;text-align:center;">DECISION ROUND</p>
-        ${svg}
-        <p class="smallhead" style="max-width:620px;margin:0 auto 14px;">Puntuación de las iniciativas</p>
+        <p class="smallhead" style="max-width:620px;margin:0 auto 14px;">Votos por iniciativa</p>
         <div class="scorelist">${scoreRows}</div>
-        <p class="smallhead" style="max-width:620px;margin:0 auto 14px;">Mix de horizonte vs. meta 70/20/10</p>
-        <div class="hmix">${hmixRows}</div>
+        <p class="smallhead" style="max-width:620px;margin:26px auto 14px;">Detalle de votos (solo facilitador)</p>
+        <div class="matrizlist">${matrizHtml}</div>
         <div style="max-width:620px;margin:0 auto;">
-          <p class="note">Línea amarilla = meta corporativa</p>
           <div style="text-align:center;margin-top:20px;"><button class="btn secondary" id="downloadxlsxbtn">Descargar Excel</button></div>
           <div style="text-align:center;margin-top:16px;"><button class="btn secondary" id="nuevarondabtn">Nueva ronda</button></div>
           <p class="note" style="text-align:center;"><button class="linklike" id="proyeccionbtn">Abrir pantalla de proyección ↗</button></p>
@@ -501,50 +430,47 @@ function runFacilitadorView(ident){
       b.onclick = async () => { await sb.from('decisiones').upsert({iniciativa_id: b.dataset.ini, decision_id: b.dataset.dec}); };
     });
     document.getElementById('proyeccionbtn').onclick = abrirProyeccion;
-    document.getElementById('downloadxlsxbtn').onclick = () => descargarExcel(aggs);
+    document.getElementById('downloadxlsxbtn').onclick = () => descargarExcel(items);
     document.getElementById('nuevarondabtn').onclick = async () => {
       if (!confirm('¿Empezar una nueva ronda?\n\nEsto borra permanentemente las iniciativas, votos y decisiones de esta ronda de la base de datos (no se puede deshacer). Asegúrate de haber descargado el Excel antes de continuar.\n\nLos participantes conectados NO se desconectan — no tienen que volver a escanear el QR.')) return;
       const ids = iniciativas.map(i=>i.id);
       if (ids.length) await sb.from('iniciativas').delete().in('id', ids); // borra votos y decisiones en cascada
-      await actualizarEstado({fase:'espera', iniciativa_activa_id:null, horizon_incremental:50, horizon_adyacente:30, horizon_disruptivo:20, ronda_id: uuid()});
+      await actualizarEstado({fase:'espera', iniciativa_activa_id:null, ronda_id: uuid()});
     };
   }
 
-  function descargarExcel(aggs){
+  function descargarExcel(items){
     const dateStr = document.getElementById('datelabel').textContent;
     const sessionId = estado.ronda_id || dateStr;
 
     const resumenRows = [
-      ['Fecha','Sesión','#','Iniciativa','Tipo','Votantes','Promedio Impacto','Promedio Beneficio-recursos','Promedio Contribución','Promedio Viabilidad','Coordenada X (Atractivo)','Coordenada Y (Viabilidad)','Puntaje','Cuadrante calculado','Decisión final']
+      ['Fecha','Sesión','#','Iniciativa','Tipo','Votantes','Votos Priorizar','Votos Resolver barreras','Votos Descartar','Decisión final']
     ];
-    aggs.forEach((a, i) => {
-      const decId = decisionesPorIni[a.ini.id];
+    items.forEach((it, i) => {
+      const decId = decisionesPorIni[it.ini.id];
       const decLabel = decId ? (DECISIONES.find(d=>d.id===decId)||{}).label : null;
-      const quadLabel = a.cuadrante ? QUAD_META[a.cuadrante].label : 'Sin votos';
       resumenRows.push([
-        dateStr, sessionId, i+1, a.ini.nombre, a.ini.tipo, a.n,
-        a.n ? Math.round(a.I*100)/100 : '—', a.n ? Math.round(a.B*100)/100 : '—',
-        a.n ? Math.round(a.C*100)/100 : '—', a.n ? Math.round(a.V*100)/100 : '—',
-        a.x===null?'—':a.x, a.y===null?'—':a.y, a.puntaje===null?'—':a.puntaje,
-        quadLabel, decLabel || 'Sin decisión registrada'
+        dateStr, sessionId, i+1, it.ini.nombre, it.ini.tipo, it.n,
+        it.counts.priorizar, it.counts.resolver, it.counts.descartar,
+        decLabel || 'Sin decisión registrada'
       ]);
     });
     const wsResumen = XLSX.utils.aoa_to_sheet(resumenRows);
-    wsResumen['!cols'] = [{wch:12},{wch:16},{wch:4},{wch:26},{wch:14},{wch:9},{wch:11},{wch:14},{wch:11},{wch:11},{wch:11},{wch:11},{wch:9},{wch:18},{wch:20}];
+    wsResumen['!cols'] = [{wch:12},{wch:16},{wch:4},{wch:26},{wch:14},{wch:9},{wch:14},{wch:20},{wch:14},{wch:20}];
 
     const detalleRows = [
-      ['Fecha','Sesión','#','Iniciativa','Tipo','Participante','Impacto potencial (1-5)','Beneficio-recursos (1-5)','Contribución estratégica (1-5)','Viabilidad (1-5)','Puntaje del participante (0-100)']
+      ['Fecha','Sesión','#','Iniciativa','Tipo','Participante','Voto']
     ];
-    aggs.forEach((a, i) => {
-      const votos = votosPorIni[a.ini.id] || [];
+    items.forEach((it, i) => {
+      const votos = votosPorIni[it.ini.id] || [];
       votos.forEach(v => {
         const nombre = participanteNombreMap[v.participante_id] || 'Participante';
-        const puntajeVp = Math.round(25*((0.30*v.i1 + 0.20*v.i2 + 0.30*v.i3 + 0.20*v.i4) - 1));
-        detalleRows.push([dateStr, sessionId, i+1, a.ini.nombre, a.ini.tipo, nombre, v.i1, v.i2, v.i3, v.i4, puntajeVp]);
+        const dec = DECISIONES.find(d => d.id === v.voto);
+        detalleRows.push([dateStr, sessionId, i+1, it.ini.nombre, it.ini.tipo, nombre, dec ? dec.label : (v.voto || '—')]);
       });
     });
     const wsDetalle = XLSX.utils.aoa_to_sheet(detalleRows);
-    wsDetalle['!cols'] = [{wch:12},{wch:16},{wch:4},{wch:26},{wch:14},{wch:28},{wch:12},{wch:12},{wch:14},{wch:11},{wch:12}];
+    wsDetalle['!cols'] = [{wch:12},{wch:16},{wch:4},{wch:26},{wch:14},{wch:28},{wch:18}];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen por iniciativa');
@@ -648,14 +574,13 @@ function runProyeccion(){
   }
 
   function renderRevealProyeccion(){
-    const aggs = iniciativas.map(ini => Object.assign({ini}, computeAgg(votosPorIni[ini.id]||[])));
-    // Reusa el mismo dibujo de plano/score que el facilitador, sin botones de decisión.
-    const {svg, scoreRows} = construirPlanoYScoreRows(aggs, decisionesPorIni, false);
+    const items = iniciativas.map(ini => Object.assign({ini}, tallyVotes(votosPorIni[ini.id]||[])));
+    // Reusa el mismo resumen de votos que el facilitador, sin botones de decisión.
+    const scoreRows = construirResumenVotos(items, decisionesPorIni, false);
     bodyEl.innerHTML = `
       <div class="dash" style="max-width:900px;margin:0 auto;">
         <p class="smallhead" style="font-size:14.5px;color:var(--cyan);max-width:800px;margin:0 auto 14px;text-align:center;">DECISION ROUND</p>
-        ${svg}
-        <p class="smallhead" style="max-width:800px;margin:0 auto 14px;">Puntuación de las iniciativas</p>
+        <p class="smallhead" style="max-width:800px;margin:0 auto 14px;">Votos por iniciativa</p>
         <div class="scorelist" style="max-width:800px;">${scoreRows}</div>
       </div>
     `;
