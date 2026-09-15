@@ -461,9 +461,10 @@ function runFacilitadorView(ident){
     document.getElementById('proyeccionbtn').onclick = abrirProyeccion;
     document.getElementById('downloadxlsxbtn').onclick = () => descargarExcel(items);
     document.getElementById('nuevarondabtn').onclick = async () => {
-      if (!confirm('¿Empezar una nueva ronda?\n\nEsto borra permanentemente las iniciativas, votos y decisiones de esta ronda de la base de datos (no se puede deshacer). Asegúrate de haber descargado el Excel antes de continuar.\n\nLos participantes conectados NO se desconectan — no tienen que volver a escanear el QR.')) return;
+      if (!confirm('¿Empezar una nueva ronda?\n\nEsto borra permanentemente las iniciativas, votos y decisiones de esta ronda de la base de datos (no se puede deshacer). Asegúrate de haber descargado el Excel antes de continuar.\n\nAdemás desconecta a todos los VPs e invitados (cada ronda es una sesión distinta, con gente que puede cambiar) — van a tener que volver a escanear el QR o abrir su enlace. El facilitador no se desconecta.')) return;
       const ids = iniciativas.map(i=>i.id);
       if (ids.length) await sb.from('iniciativas').delete().in('id', ids); // borra votos y decisiones en cascada
+      await sb.from('sala').delete().in('rol', ['vp','invitado']);
       await actualizarEstado({fase:'espera', iniciativa_activa_id:null, ronda_id: uuid()});
     };
   }
