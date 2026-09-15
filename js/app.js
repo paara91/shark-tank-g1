@@ -20,6 +20,11 @@ const DECISIONES = [
   {id:'resolver', label:'Resolver barreras', color:'#FFD347'},
   {id:'descartar', label:'Descartar', color:'#FF4382'}
 ];
+// Orden fijo en el que aparecen los botones de "Selecciona tu rol" (Presidente
+// primero, luego las VPs, luego COE y Riesgos). Cualquier id del directorio
+// que no esté en esta lista (un rol nuevo que se agregue después) cae al
+// final, en orden alfabético.
+const ORDEN_ROLES = ['presidente','tecnica_innovacion','generacion_demanda','logistica_fp','ventas','gestion_humana','administrativa_financiera','juridica_ac','coe','riesgos_cumplimiento'];
 
 // Freno contra clics accidentales en la pantalla del facilitador — NO es
 // seguridad real: este archivo es público y cualquiera puede leer esta clave
@@ -120,12 +125,19 @@ function dispatch(ident){
 /* ============ SELECTOR DE ROL ============ */
 async function runRolePicker(){
   bodyEl.innerHTML = '<div class="dash centercard"><p>Cargando…</p></div>';
-  const {data: vps, error} = await sb.from('vp_directorio').select('*').order('nombre', {ascending:true});
+  const {data: vps, error} = await sb.from('vp_directorio').select('*');
   if (error){
     bodyEl.innerHTML = `<div class="dash centercard"><p>No se pudo cargar el directorio de VPs.</p><p class="note">${esc(error.message)}</p></div>`;
     return;
   }
-  const vpItems = (vps||[]).map(v => `<button class="opt" data-vp="${esc(v.id)}"><span class="lbl">${esc(v.nombre)}</span></button>`).join('');
+  const vpsOrdenados = (vps||[]).slice().sort((a,b) => {
+    const ia = ORDEN_ROLES.indexOf(a.id), ib = ORDEN_ROLES.indexOf(b.id);
+    if (ia===-1 && ib===-1) return a.nombre.localeCompare(b.nombre);
+    if (ia===-1) return 1;
+    if (ib===-1) return -1;
+    return ia-ib;
+  });
+  const vpItems = vpsOrdenados.map(v => `<button class="opt" data-vp="${esc(v.id)}"><span class="lbl">${esc(v.nombre)}</span></button>`).join('');
   bodyEl.innerHTML = `
     <div class="dash rolepick" style="max-width:704px;margin:0 auto;">
       <p class="smallhead" style="font-size:13.5px;">Selecciona tu rol</p>
