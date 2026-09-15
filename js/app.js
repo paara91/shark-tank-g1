@@ -105,8 +105,14 @@ async function boot(){
 }
 
 async function registrar({rol, vp_id, nombre_mostrado}){
-  const participante_id = uuid();
-  const {error} = await sb.from('sala').insert({participante_id, rol, vp_id: vp_id||null, nombre_mostrado});
+  // Para un VP, el id de participante es fijo por rol (no al azar): si esa
+  // misma persona entra desde otro celular/navegador (o le tocó recargar
+  // borrando el localStorage), reconecta la MISMA fila en vez de crear una
+  // nueva — así el contador de conectados no se llena de duplicados con el
+  // paso de los días. Invitados y facilitador sí usan un id nuevo cada vez,
+  // porque no son un rol fijo enumerable.
+  const participante_id = (rol === 'vp' && vp_id) ? ('vp-' + vp_id) : uuid();
+  const {error} = await sb.from('sala').upsert({participante_id, rol, vp_id: vp_id||null, nombre_mostrado, conectado_en: new Date().toISOString()});
   if (error){
     bodyEl.innerHTML = `<div class="dash centercard"><p>No se pudo conectar con la sala.</p><p class="note">${esc(error.message)}</p></div>`;
     return;
